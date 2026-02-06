@@ -6,19 +6,22 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <StackPanel Orientation="Horizontal" Spacing="12">
-            <TextBlock Text="Profile:" VerticalAlignment="Center"/>
-            <ComboBox x:Name="CmbProfile" Width="160">
-                <ComboBoxItem Content="Linear"/>
-                <ComboBoxItem Content="Exponential"/>
-                <ComboBoxItem Content="Logarithmic"/>
-            </ComboBox>
-            <TextBlock Text="Expo:" VerticalAlignment="Center"/>
-            <Slider x:Name="SldExpo" Minimum="1.0" Maximum="3.0" Width="120"/>
-            <TextBlock Text="Dead Low:" VerticalAlignment="Center"/>
-            <Slider x:Name="SldDzL" Minimum="0" Maximum="0.1" Width="120"/>
-            <TextBlock Text="Dead High:" VerticalAlignment="Center"/>
-            <Slider x:Name="SldDzH" Minimum="0" Maximum="0.1" Width="120"/>
+        <StackPanel Orientation="Horizontal">
+			<TextBlock Text="Profile:" VerticalAlignment="Center" Margin="0,0,12,0"/>
+			<ComboBox x:Name="CmbProfile" Width="160" Margin="0,0,12,0">
+				<ComboBoxItem Content="Linear"/>
+				<ComboBoxItem Content="Exponential"/>
+				<ComboBoxItem Content="Logarithmic"/>
+			</ComboBox>
+
+			<TextBlock Text="Expo:" VerticalAlignment="Center" Margin="0,0,12,0"/>
+			<Slider x:Name="SldExpo" Minimum="1.0" Maximum="3.0" Width="120" Margin="0,0,12,0"/>
+
+			<TextBlock Text="Dead Low:" VerticalAlignment="Center" Margin="0,0,12,0"/>
+			<Slider x:Name="SldDzL" Minimum="0" Maximum="0.1" Width="120" Margin="0,0,12,0"/>
+
+			<TextBlock Text="Dead High:" VerticalAlignment="Center" Margin="0,0,12,0"/>
+			<Slider x:Name="SldDzH" Minimum="0" Maximum="0.1" Width="120"/>
         </StackPanel>
         <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" Margin="0,16,0,0">
             <Button Content="Capture Min" Width="120"/>

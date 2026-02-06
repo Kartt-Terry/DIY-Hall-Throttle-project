@@ -6,15 +6,15 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <StackPanel Orientation="Horizontal" Spacing="16">
-            <TextBlock Text="Raw:"/>
-            <TextBlock Text="0"/>
-            <TextBlock Text="Filtered:"/>
-            <TextBlock Text="0.0"/>
-            <TextBlock Text="Norm:"/>
-            <TextBlock Text="0.0"/>
-            <TextBlock Text="Out:"/>
-            <TextBlock Text="0.0"/>
+        <StackPanel Orientation="Horizontal">
+			<TextBlock Text="Raw:"           Margin="0,0,16,0"/>
+			<TextBlock Text="0"              Margin="0,0,16,0"/>
+			<TextBlock Text="Filtered:"      Margin="0,0,16,0"/>
+			<TextBlock Text="0.0"            Margin="0,0,16,0"/>
+			<TextBlock Text="Norm:"          Margin="0,0,16,0"/>
+			<TextBlock Text="0.0"            Margin="0,0,16,0"/>
+			<TextBlock Text="Out:"           Margin="0,0,16,0"/>
+			<TextBlock Text="0.0"/>
         </StackPanel>
         <Border Grid.Row="1" BorderBrush="#ccc" BorderThickness="1" Margin="0,12,0,0">
             <TextBlock Text="(Graphs placeholder)" HorizontalAlignment="Center" VerticalAlignment="Center"/>
