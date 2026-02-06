@@ -1,0 +1,26 @@
+name: CI - Firmware (Arduino CLI)
+
+on:
+  push:
+    paths:
+      - 'firmware/**'
+      - '.github/workflows/ci-firmware.yml'
+  pull_request:
+    paths:
+      - 'firmware/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+      - name: Install core (AVR)
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+      - name: Compile (Pro Micro compatible / Leonardo)
+        working-directory: firmware/arduino-pro-micro
+        run: |
+          arduino-cli compile --fqbn arduino:avr:leonardo .

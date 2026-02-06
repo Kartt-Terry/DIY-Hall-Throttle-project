@@ -1,0 +1,11 @@
+<UserControl x:Class="ThrottleUI.Views.DrivingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="16">
+        <StackPanel>
+            <TextBlock Text="Driving Mode" FontSize="20"/>
+            <ProgressBar x:Name="Bar" Height="28" Minimum="0" Maximum="100" Value="0"/>
+            <TextBlock x:Name="LblPercent" Text="0 %" FontSize="16" Margin="0,8,0,0"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

@@ -1,0 +1,11 @@
+<UserControl x:Class="ThrottleUI.Views.FaultView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Background="#331111">
+        <StackPanel Margin="16">
+            <TextBlock Text="Fault Mode" FontSize="20" Foreground="Red"/>
+            <TextBlock Text="Error code: (placeholder)"/>
+            <Button Content="Reset Device" Width="140"/>
+        </StackPanel>
+    </Grid>
+</UserControl>

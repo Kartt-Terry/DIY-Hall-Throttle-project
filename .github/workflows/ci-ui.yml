@@ -1,0 +1,28 @@
+name: CI - UI (.NET WPF)
+
+on:
+  push:
+    paths:
+      - 'software-ui/windows/ThrottleUI/**'
+      - '.github/workflows/ci-ui.yml'
+  pull_request:
+    paths:
+      - 'software-ui/windows/ThrottleUI/**'
+
+jobs:
+  build-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore software-ui/windows/ThrottleUI/ThrottleUI.csproj
+      - name: Build
+        run: dotnet build --configuration Release software-ui/windows/ThrottleUI/ThrottleUI.csproj
+      - name: Test
+        run: |
+          dotnet restore software-ui/windows/ThrottleUI/tests/ThrottleUI.Tests.csproj
+          dotnet test --configuration Release software-ui/windows/ThrottleUI/tests/ThrottleUI.Tests.csproj --no-build

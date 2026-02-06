@@ -1,0 +1,42 @@
+# General
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+*.bak
+*.swp
+*.swo
+
+# Build artifacts
+build/
+dist/
+out/
+obj/
+bin/
+
+# .NET / WPF
+*.user
+*.suo
+*.cache
+.vs/
+*.ide/
+/Software-UI/Windows/ThrottleUI/ThrottleUI/Properties/PublishProfiles/
+
+# Arduino
+*.hex
+*.elf
+*.eep
+*.bin
+.arduino*
+
+# CAD
+*.ipj
+*.iam
+*.idw
+*.iam
+*.f3d
+*.f3z
+
+# Python virtual envs
+.venv/
+venv/

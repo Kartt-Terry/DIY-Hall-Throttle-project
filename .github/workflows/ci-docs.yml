@@ -1,0 +1,20 @@
+name: CI - Docs checks
+
+on:
+  push:
+    paths:
+      - 'docs/**'
+      - '.github/workflows/ci-docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Markdown lint
+        uses: nosborn/github-action-markdown-cli@v3.3.0
+        with:
+          files: docs
