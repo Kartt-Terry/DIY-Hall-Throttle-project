@@ -1,19 +1,18 @@
-# Calibration Guide
+## Full Calibration Procedure (Pedal + Firmware + UI)
 
-## UI Calibration
+1. Ensure the pedal mechanical stopper is adjusted.
+2. Power on the device.
+3. UI Mode → Settings.
+4. Press **Capture Min** with pedal released.
+5. Press **Capture Max** with pedal fully pressed.
+6. Click **Save to Device**.
+7. Verify in Driving Mode that 0–100% range behaves correctly.
 
-1. Capture Min.
-2. Capture Max.
-3. Save to device.
-
-## No UI Gesture
-
-- After power up, press the pedal fully three times quickly.
-
-## Expected
-
-- Rest ≈ 0 percent
-- Full ≈ 100 percent
+### Boot-Time Triple-Press Calibration (No UI)
+- After power-up, press pedal fully **three times** within 5 seconds.
+- Device enters auto-calibration state.
+- MIN and MAX are captured automatically.
+- Values are written to EEPROM.
 
 ## Tips
 
