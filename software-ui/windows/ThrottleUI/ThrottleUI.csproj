@@ -1,8 +1,64 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
 	<PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <UseWPF>true</UseWPF>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<UseWPF>true</UseWPF>
+		<Nullable>enable</Nullable>
+
+		<!-- Poista SDK:n oletus-XAML-keräily, jotta voimme listata sivut käsin -->
+		<EnableDefaultPageItems>false</EnableDefaultPageItems>
+		<EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+	</PropertyGroup>
+
+	<!-- ÄLÄ käännä tests/-kansion tiedostoja tähän WPF-projektiin -->
+	<ItemGroup>
+		<Compile Remove="tests\**\*.cs" />
+		<Page Remove="tests\**\*.xaml" />
+		<None Remove="tests\**\*" />
+		<Content Remove="tests\**\*" />
+		<EmbeddedResource Remove="tests\**\*" />
+	</ItemGroup>
+
+	<!-- WPF: App.xaml ApplicationDefinition + kaikki XAML-sivut polussa src\... -->
+	<ItemGroup>
+		<!-- App.xaml = ApplicationDefinition => generoi Main -->
+		<ApplicationDefinition Include="src\App.xaml" />
+
+		<!-- App.xaml.cs sidotaan App.xaml:aan (ei pakollinen käännöksen kannalta, mutta siistii projektipuuta) -->
+		<Compile Update="src\App.xaml.cs">
+			<DependentUpon>App.xaml</DependentUpon>
+		</Compile>
+
+		<!-- Pääikkuna -->
+		<Page Include="src\MainWindow.xaml" />
+		<Compile Update="src\MainWindow.xaml.cs">
+			<DependentUpon>MainWindow.xaml</DependentUpon>
+		</Compile>
+
+		<!-- Näkymät -->
+		<Page Include="src\Views\DrivingView.xaml" />
+		<Compile Update="src\Views\DrivingView.xaml.cs">
+			<DependentUpon>DrivingView.xaml</DependentUpon>
+		</Compile>
+
+		<Page Include="src\Views\SettingsView.xaml" />
+		<Compile Update="src\Views\SettingsView.xaml.cs">
+			<DependentUpon>SettingsView.xaml</DependentUpon>
+		</Compile>
+
+		<Page Include="src\Views\FaultView.xaml" />
+		<Compile Update="src\Views\FaultView.xaml.cs">
+			<DependentUpon>FaultView.xaml</DependentUpon>
+		</Compile>
+
+		<Page Include="src\Views\DiagnosticsView.xaml" />
+		<Compile Update="src\Views\DiagnosticsView.xaml.cs">
+			<DependentUpon>DiagnosticsView.xaml</DependentUpon>
+		</Compile>
+	</ItemGroup>
+
+	<!-- SerialPort-tyypille selkeä pakettiviite -->
+	<ItemGroup>
+		<PackageReference Include="System.IO.Ports" Version="8.0.0" />
+	</ItemGroup>
 </Project>
