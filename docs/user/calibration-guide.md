@@ -1,14 +1,20 @@
 # Calibration Guide
 
-This document explains how to calibrate the pedal.
-
 ## UI Calibration
 
-1. Release pedal and click Capture Min.
-2. Press pedal fully and click Capture Max.
-3. Click Save to Device.
+1. Capture Min
+2. Capture Max
+3. Save
 
-## No‑UI Boot Gesture
+## No‑UI Gesture
 
-- After power‑up, press the pedal fully three times quickly.
-- Firmware enters calibration mode and captures
+- Press pedal fully three times after power‑up.
+
+## Expected
+
+- Rest ≈ 0 %
+- Full ≈ 100 %
+
+## Tips
+
+- Adjust stops before calibration.
