@@ -1,34 +1,36 @@
 /*
-  DIYThrottle_RawCalib - Full Sketch with Plotter Mode (CSV) + Serial Calibration
+  DIYThrottle_RawCalib - Signals + IIR Filter (Step 2)
   Board: Arduino Pro Micro (select "Arduino Leonardo" in Arduino IDE)
   Baud : 115200
 
-  Serial commands (set line ending = Newline or Both NL & CR):
-    ?  -> help (when Plotter mode is OFF)
-    x  -> capture MAX (press pedal fully, then send 'x')
-    n  -> capture MIN (release pedal fully, then send 'n')
-    s  -> save MIN/MAX to EEPROM
-    p  -> print current MIN/MAX
-    r  -> reset config (clear EEPROM header)
-    t  -> toggle Plotter mode (CSV only ON/OFF)
+  Features in this version:
+    - ADC read (raw1/raw2)
+    - Diagnostic voltages: V1 = raw1/1023*Vsys, V2 = raw2/1023*Vsys (Vsys≈5.00V)
+    - IIR filtering per channel: f = f + alpha*(raw - f), alpha=0.2
+    - CSV output for Serial Plotter: S1,S2,V1,V2,F1,F2
+    - Plotter mode toggle 't' (CSV only ON/OFF)
+    - Serial calibration kept: x (MAX), n (MIN), s (save), p (print), r (reset)
 
-  Notes:
-  - Plotter mode ON prints CSV lines ("S1,S2,V1,V2" header once, then data lines).
-  - Plotter mode OFF prints human-readable "label:value" lines & help texts.
+  Usage notes:
   - Keep Serial Monitor CLOSED when using Serial Plotter.
+  - Serial Monitor line ending = Newline or Both NL&CR.
 */
 
 #include <EEPROM.h>
 
-/// --- Pins (A1324 outputs) ---
+// ---------------- Pins (A1324 outputs) ----------------
 const uint8_t PIN_S1 = A0;   // Sensor 1
 const uint8_t PIN_S2 = A1;   // Sensor 2
 
-/// --- Serial/ADC ---
+// ---------------- Serial/ADC ----------------
 const unsigned long SERIAL_BAUD = 115200;
-const float VREF_VOLTS = 5.00f; // diagnostic voltage (can be replaced by measured Vcc later)
+const float VREF_VOLTS = 5.00f; // diagnostic voltage (later: measure Vcc)
 
-/// --- EEPROM layout (very small demo) ---
+// ---------------- IIR filtering ----------------
+float alpha = 0.20f;         // smoothing factor
+float f1 = 0.0f, f2 = 0.0f;  // filtered states (LSB units)
+
+// ---------------- EEPROM layout (demo) ----------------
 struct Config {
   uint16_t magic; // 0xCAFE = valid
   int16_t  min1;
@@ -42,15 +44,15 @@ const uint16_t MAGIC       = 0xCAFE;
 const int      EEPROM_ADDR = 0;
 Config cfg;
 
-/// --- Plotter mode control ---
-bool plotterMode       = true;  // true = CSV-only output (for Serial Plotter)
-bool csvHeaderPrinted  = false; // print header once after toggling ON
+// ---------------- Plotter mode control ----------------
+bool plotterMode       = true;   // true = CSV-only output (for Serial Plotter)
+bool csvHeaderPrinted  = false;  // print CSV header once after toggling ON
 
-/// --- Print rate ---
+// ---------------- Print rate ----------------
 unsigned long lastPrintMs = 0;
 const unsigned long PRINT_INTERVAL_MS = 20; // ~50 Hz
 
-// simple checksum for demo
+// ---------------- Helpers ----------------
 uint16_t checksum(const Config& c) {
   uint32_t s = 0;
   s += c.magic;
@@ -93,7 +95,7 @@ void printConfig() {
 }
 
 void printHelp() {
-  if (plotterMode) return; // no help spam in Plotter mode
+  if (plotterMode) return;
   Serial.println();
   Serial.println(F("Commands:"));
   Serial.println(F("  ?  -> help"));
@@ -116,51 +118,59 @@ void setup() {
 
   loadConfig();
 
-  // When Plotter mode is OFF, show banner & help; keep silent otherwise.
+  // Initialize filtered states with first readings to prevent jump
+  int r1 = analogRead(PIN_S1);
+  int r2 = analogRead(PIN_S2);
+  f1 = (float)r1;
+  f2 = (float)r2;
+
   if (!plotterMode) {
-    Serial.println(F("DIYThrottle_RawCalib - Pro Micro/Leonardo"));
+    Serial.println(F("DIYThrottle_RawCalib - Step 2 (Signals + IIR)"));
     printConfig();
     printHelp();
   }
 }
 
 void loop() {
-  // --- 1) Read raw sensors ---
+  // --- 1) ADC read (raw) ---
   int raw1 = analogRead(PIN_S1); // 0..1023
   int raw2 = analogRead(PIN_S2); // 0..1023
 
-  // --- 2) Periodic print (CSV for Plotter, labels for Monitor) ---
+  // --- 2) IIR filter ---
+  f1 = f1 + alpha * ((float)raw1 - f1);
+  f2 = f2 + alpha * ((float)raw2 - f2);
+
+  // --- 3) Periodic output ---
   unsigned long now = millis();
   if (now - lastPrintMs >= PRINT_INTERVAL_MS) {
     lastPrintMs = now;
 
-    float v1 = (raw1 / 1023.0f) * VREF_VOLTS;
+    float v1 = (raw1 / 1023.0f) * VREF_VOLTS; // diagnostics
     float v2 = (raw2 / 1023.0f) * VREF_VOLTS;
 
     if (plotterMode) {
-      // CSV output (best for Serial Plotter)
       if (!csvHeaderPrinted) {
-        Serial.println(F("S1,S2,V1,V2")); // header once
+        Serial.println(F("S1,S2,V1,V2,F1,F2"));
         csvHeaderPrinted = true;
       }
-      Serial.print(raw1);
-      Serial.print(',');
-      Serial.print(raw2);
-      Serial.print(',');
-      Serial.print(v1, 3);
-      Serial.print(',');
-      Serial.println(v2, 3);
+      Serial.print(raw1);       Serial.print(',');
+      Serial.print(raw2);       Serial.print(',');
+      Serial.print(v1, 3);      Serial.print(',');
+      Serial.print(v2, 3);      Serial.print(',');
+      Serial.print(f1, 3);      Serial.print(',');
+      Serial.println(f2, 3);
     } else {
-      // Human-readable (OK also for Plotter, but CSV is more robust)
       Serial.print(F("S1:")); Serial.print(raw1);
       Serial.print(F(" S2:")); Serial.print(raw2);
       Serial.print(F(" V1:")); Serial.print(v1, 3);
       Serial.print(F(" V2:")); Serial.print(v2, 3);
+      Serial.print(F(" F1:")); Serial.print(f1, 3);
+      Serial.print(F(" F2:")); Serial.print(f2, 3);
       Serial.println();
     }
   }
 
-  // --- 3) Serial commands ---
+  // --- serial commands ---
   while (Serial.available()) {
     char c = Serial.read();
     if (c == '\r' || c == '\n') continue;
@@ -190,7 +200,7 @@ void loop() {
         break;
       }
 
-      case 's': { // save to EEPROM (with simple validity check)
+      case 's': { // save to EEPROM (basic validity check)
         bool ok = (cfg.max1 > cfg.min1 + 5) && (cfg.max2 > cfg.min2 + 5);
         if (!ok) {
           if (!plotterMode) {
@@ -219,14 +229,11 @@ void loop() {
 
       case 't': // toggle Plotter mode
         plotterMode = !plotterMode;
-        csvHeaderPrinted = false; // force header next time if we switched ON
+        csvHeaderPrinted = false; // header again if ON
         if (!plotterMode) {
-          // Now verbose mode: print banner/help/config again
           Serial.println(F("Plotter mode OFF (verbose text enabled)."));
           printConfig();
           printHelp();
-        } else {
-          // Now CSV-only: keep quiet; next periodic print will output the header and data rows
         }
         break;
 
