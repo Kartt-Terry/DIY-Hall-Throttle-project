@@ -1,13 +1,15 @@
-# Test Plan
+﻿# Test Plan
 
 ## Levels
-- Unit (firmware/UI)
-- Hardware-in-the-Loop (HIL)
-- End-to-End (E2E)
-- Fault/Fail-safe
-- Measurements (noise, latency, linearity)
+
+- Unit tests (firmware and UI)
+- Hardware‑in‑the‑loop tests
+- End‑to‑end tests
+- Fault and fail‑safe tests
+- Measurements (noise, latency and linearity)
 
 ## Metrics
-- HID latency < 10 ms
-- Noise std < target (defined per sensor)
-- Linearity error < target %
+
+- HID latency under ten milliseconds
+- Noise level within sensor specification
+- Linearity error below target threshold

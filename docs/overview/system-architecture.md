@@ -1,6 +1,6 @@
 # System Architecture
 
-This document describes the high‑level structure of the DIY Hall Throttle system.
+This document describes the high‑level architecture.
 
 ## Blocks
 
@@ -12,18 +12,5 @@ This document describes the high‑level structure of the DIY Hall Throttle syst
 ## Data Flow
 
 ```text
-Mechanical motion 
-    ↓
-Sensor raw value
-    ↓
-Filtering
-    ↓
-Calibration (MIN / MAX)
-    ↓
-Deadzones
-    ↓
-Profile curve
-    ↓
-Output value
-    ↓
-USB HID report
+Mechanical → Raw sensor → Filtering → Calibration → Deadzones
+→ Profile curve → Output → USB HID report

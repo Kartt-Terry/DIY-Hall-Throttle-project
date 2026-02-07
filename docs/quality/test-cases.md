@@ -1,15 +1,7 @@
-# Test Plan
+# Test Cases
 
-## Levels
+This file lists example test identifiers.
 
-- Unit (firmware/UI)
-- Hardware‑in‑the‑loop (HIL)
-- End‑to‑end (E2E)
-- Fault and fail‑safe tests
-- Measurements (noise, latency, linearity)
-
-## Metrics
-
-- HID latency < 10 ms
-- Noise std within sensor specification
-- Linearity error < target %
+- TC‑FW‑CAL‑001 – Capture Min maps to zero
+- TC‑FW‑CAL‑002 – Capture Max maps to one
+- TC‑FW‑PR‑030 – Profile curve transforms input as expected
