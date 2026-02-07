@@ -1,27 +1,33 @@
 /*
-  DIYThrottle_RawCalib - Step 4 (LUT + Mismatch)
+  DIYThrottle_RawCalib - Step 4 + HID (B-variant: OUT→Rz using 0..1023 input range)
   Board: Arduino Pro Micro (select "Arduino Leonardo" in Arduino IDE)
   Baud : 115200
 
-  Additions in Step 4:
-    - LUT profile (65 points, 0..10000 -> 0..1, linear interpolation)
-    - Mismatch monitoring: delta = |y1 - y2|, threshold 0.03, hold 100 ms
-    - CSV columns: S1,S2,V1,V2,F1,F2,N1,N2,D1,D2,Y1,Y2,DELTA,FAULT,OUT
-    - Robust header printing: on toggle, every 2s in plotterMode, and on 'h'
+  This variant feeds Joystick.setRzAxis() with values in **0..1023** and
+  explicitly sets the library input range to **0..1023** via setRzAxisRange(0,1023).
+  The HID library (v2.1.x) scales this internally to the USB report (0..65535).
+
+  Pipeline kept:
+    RAW → IIR(α=0.20) → Normalize(MIN/MAX) → Deadzones → LUT(65p) → Mismatch → OUT
+    OUT = avg(Y1,Y2); forced to 0 when fault
+
+  CSV columns:
+    S1,S2,V1,V2,F1,F2,N1,N2,D1,D2,Y1,Y2,DELTA,FAULT,OUT,RZ
 
   Serial commands (line ending = Newline or Both NL&CR):
-    ?  help (when plotterMode OFF)
-    x  capture MAX (hold fully down)
-    n  capture MIN (release fully)
-    s  save to EEPROM (MIN/MAX, deadzones, profile, expo, LUT)
-    p  print MIN/MAX (verbose)
-    r  reset config (clears EEPROM header, clears fault)
-    t  toggle plotter mode (CSV-only ON/OFF)
-    h  print CSV header now
-    I  load identity LUT (0..1), not saved until 's'
+    ? help (when plotterMode OFF)
+    x capture MAX (hold fully down)
+    n capture MIN (release fully)
+    s save to EEPROM (MIN/MAX, deadzones, profile, expo, LUT)
+    p print MIN/MAX (verbose)
+    r reset config (clears EEPROM header, clears fault)
+    t toggle plotter mode (CSV-only ON/OFF)
+    h print CSV header now
+    I load identity LUT (0..1) into RAM (not saved until 's')
 */
 
 #include <EEPROM.h>
+#include <Joystick.h>
 
 // ---------------- Pins ----------------
 const uint8_t PIN_S1 = A0;   // Sensor 1 (A1324)
@@ -29,14 +35,11 @@ const uint8_t PIN_S2 = A1;   // Sensor 2 (A1324)
 
 // ---------------- Serial/ADC ----------------
 const unsigned long SERIAL_BAUD = 115200;
-const float VREF_VOLTS = 5.00f; // diagnostic supply (later: measured Vcc)
+const float VREF_VOLTS = 5.00f; // diagnostic reference (later: measured Vcc)
 
 // ---------------- IIR filtering ----------------
 float alpha = 0.20f;         // smoothing factor
 float f1 = 0.0f, f2 = 0.0f;  // filtered states (LSB)
-
-// ---------------- Profile / LUT ----------------
-// profile: 0=linear,1=expo,2=log,3=lut (we use LUT by default)
 
 // ---------------- EEPROM config (v2) ----------------
 struct Config {
@@ -47,11 +50,11 @@ struct Config {
   int16_t  min2;  int16_t  max2;
   uint16_t deadLow_mil;   // 0..10000 (milli fraction)
   uint16_t deadHigh_mil;  // 0..10000
-  uint8_t  profile;       // see above
+  uint8_t  profile;       // 0=linear,1=expo,2=log,3=lut
   uint8_t  _pad2[3];
-  float    expo_k;        // reserved for future expo
+  float    expo_k;        // reserved
   uint16_t lut[65];       // 0..10000
-  uint16_t crc;           // simple checksum
+  uint16_t crc;           // checksum
 };
 
 const uint16_t MAGIC       = 0xCAFE;
@@ -64,7 +67,7 @@ float dead_low  = 0.02f;   // 2%
 float dead_high = 0.02f;   // 2%
 
 // ---------------- LUT runtime ----------------
-uint16_t lutU[65];   // uint16 0..10000 in RAM (mirrors cfg.lut)
+uint16_t lutU[65];   // uint16 0..10000 in RAM
 
 // ---------------- Plotter / header ----------------
 bool plotterMode       = true;   // CSV-only when true
@@ -77,10 +80,19 @@ const unsigned long HEADER_INTERVAL_MS = 2000; // 2 s
 // ---------------- Mismatch monitoring ----------------
 const float MISMATCH_THRESHOLD = 0.03f;       // 3%
 const unsigned long MISMATCH_HOLD_MS = 100;   // must persist this long to trip
-const unsigned long MISMATCH_CLEAR_MS = 300;  // below threshold this long to clear
+const unsigned long MISMATCH_CLEAR_MS = 300;  // below threshold to clear
 bool faultMismatch = false;
 unsigned long mismatchStartMs = 0;
 unsigned long mismatchClearStartMs = 0;
+
+// ---------------- HID Joystick (Rz only) ----------------
+Joystick_ Joystick(
+  0x04, JOYSTICK_TYPE_JOYSTICK,
+  0, 0,
+  false, false, false,   // X, Y, Z disabled
+  false, false, true,    // Rx, Ry disabled, Rz enabled
+  false, false, false, false, false
+);
 
 // ---------------- Helpers ----------------
 static inline uint16_t add16(uint16_t a, uint16_t b){ return (uint16_t)((a + b) & 0xFFFF); }
@@ -93,7 +105,6 @@ uint16_t checksum(const Config& c){
   s = add16(s, (uint16_t)c.min2); s = add16(s, (uint16_t)c.max2);
   s = add16(s, c.deadLow_mil);    s = add16(s, c.deadHigh_mil);
   s = add16(s, (uint16_t)c.profile);
-  // fold float expo_k into two 16-bit words
   union { float f; uint16_t w[2]; } u; u.f = c.expo_k; s = add16(s, u.w[0]); s = add16(s, u.w[1]);
   for (int i=0;i<65;i++) s = add16(s, c.lut[i]);
   return s;
@@ -122,7 +133,7 @@ void loadConfig(){
     cfg.min1=1023; cfg.max1=0; cfg.min2=1023; cfg.max2=0;
     cfg.deadLow_mil = 200;   // 2%
     cfg.deadHigh_mil= 200;   // 2%
-    cfg.profile = 3;         // LUT by default
+    cfg.profile = 3;         // LUT default
     cfg.expo_k = 1.6f;
     setIdentityLUT(cfg.lut);
     cfg.crc = checksum(cfg);
@@ -172,7 +183,7 @@ void printHelp(){
 }
 
 void printCsvHeader(){
-  Serial.println(F("S1,S2,V1,V2,F1,F2,N1,N2,D1,D2,Y1,Y2,DELTA,FAULT,OUT"));
+  Serial.println(F("S1,S2,V1,V2,F1,F2,N1,N2,D1,D2,Y1,Y2,DELTA,FAULT,OUT,RZ"));
   csvHeaderPrinted = true;
   lastHeaderMs = millis();
 }
@@ -218,8 +229,13 @@ void setup(){
   int r2 = analogRead(PIN_S2);
   f1 = (float)r1; f2 = (float)r2;
 
+  // start HID joystick
+  Joystick.begin();
+  // IMPORTANT for variant B: we FEED 0..1023 to setRzAxis(), tell the library our input range:
+  Joystick.setRzAxisRange(0, 1023);
+
   if (!plotterMode){
-    Serial.println(F("DIYThrottle_RawCalib - Step 4 (LUT + Mismatch)"));
+    Serial.println(F("DIYThrottle_RawCalib - Step 4 + HID (B-variant: 0..1023 input to Rz)"));
     printConfig();
     printHelp();
   } else {
@@ -254,29 +270,33 @@ void loop(){
       if (mismatchStartMs == 0) mismatchStartMs = now;
       if (now - mismatchStartMs >= MISMATCH_HOLD_MS){
         faultMismatch = true;
-        mismatchClearStartMs = 0; // reset clear timer
+        mismatchClearStartMs = 0;
       }
     } else {
-      mismatchStartMs = 0; // not persistent
+      mismatchStartMs = 0;
     }
   } else {
-    // try clear when delta low enough for a while
     if (delta <= MISMATCH_THRESHOLD){
       if (mismatchClearStartMs == 0) mismatchClearStartMs = now;
       if (now - mismatchClearStartMs >= MISMATCH_CLEAR_MS){
-        faultMismatch = false; // auto clear
+        faultMismatch = false;
         mismatchStartMs = 0; mismatchClearStartMs = 0;
       }
     } else {
-      mismatchClearStartMs = 0; // still high
+      mismatchClearStartMs = 0;
     }
   }
 
   // --- OUT ---
   float out = 0.5f * (y1 + y2);
-  if (faultMismatch){
-    out = 0.0f; // fail-safe
-  }
+  if (faultMismatch){ out = 0.0f; }
+
+  // --- Variant B HID: map OUT [0..1] to **0..1023** and send as Rz ---
+  float out_clamped = out;
+  if (out_clamped < 0.0f) out_clamped = 0.0f;
+  if (out_clamped > 1.0f) out_clamped = 1.0f;
+  uint16_t rz = (uint16_t)(out_clamped * 1023.0f + 0.5f);
+  Joystick.setRzAxis(rz);
 
   // --- periodic header ---
   if (plotterMode){
@@ -306,7 +326,8 @@ void loop(){
       Serial.print(y2,3);  Serial.print(',');
       Serial.print(delta,3);Serial.print(',');
       Serial.print(faultMismatch ? 1 : 0); Serial.print(',');
-      Serial.println(out,3);
+      Serial.print(out,3);  Serial.print(',');
+      Serial.println(rz);    // show what we send into setRzAxis()
     } else {
       Serial.print(F("S1:")); Serial.print(raw1);
       Serial.print(F(" S2:")); Serial.print(raw2);
@@ -323,6 +344,7 @@ void loop(){
       Serial.print(F(" DELTA:")); Serial.print(delta,3);
       Serial.print(F(" FAULT:")); Serial.print(faultMismatch ? 1 : 0);
       Serial.print(F(" OUT:")); Serial.print(out,3);
+      Serial.print(F(" RZ:"));  Serial.print(rz);
       Serial.println();
     }
   }
@@ -333,25 +355,19 @@ void loop(){
     if (c=='\r' || c=='\n') continue;
     switch (c){
       case '?': printHelp(); break;
-      case 'x': {
-        cfg.max1 = analogRead(PIN_S1); cfg.max2 = analogRead(PIN_S2);
-        if (!plotterMode){ Serial.print(F("Captured MAX1=")); Serial.print(cfg.max1); Serial.print(F(" MAX2=")); Serial.println(cfg.max2);} break; }
-      case 'n': {
-        cfg.min1 = analogRead(PIN_S1); cfg.min2 = analogRead(PIN_S2);
-        if (!plotterMode){ Serial.print(F("Captured MIN1=")); Serial.print(cfg.min1); Serial.print(F(" MIN2=")); Serial.println(cfg.min2);} break; }
-      case 's': {
-        bool ok = (cfg.max1 > cfg.min1 + 5) && (cfg.max2 > cfg.min2 + 5);
-        if (!ok){ if (!plotterMode) Serial.println(F("ERROR: invalid calibration (do 'x' then 'n' before 's').")); }
-        else { saveConfig(); if (!plotterMode){ Serial.println(F("Saved config.")); printConfig(); } }
-        break; }
+      case 'x': { cfg.max1 = analogRead(PIN_S1); cfg.max2 = analogRead(PIN_S2);
+                  if (!plotterMode){ Serial.print(F("Captured MAX1=")); Serial.print(cfg.max1); Serial.print(F(" MAX2=")); Serial.println(cfg.max2);} break; }
+      case 'n': { cfg.min1 = analogRead(PIN_S1); cfg.min2 = analogRead(PIN_S2);
+                  if (!plotterMode){ Serial.print(F("Captured MIN1=")); Serial.print(cfg.min1); Serial.print(F(" MIN2=")); Serial.println(cfg.min2);} break; }
+      case 's': { bool ok = (cfg.max1 > cfg.min1 + 5) && (cfg.max2 > cfg.min2 + 5);
+                  if (!ok){ if (!plotterMode) Serial.println(F("ERROR: invalid calibration (do 'x' then 'n' before 's').")); }
+                  else { saveConfig(); if (!plotterMode){ Serial.println(F("Saved config.")); printConfig(); } } break; }
       case 'p': printConfig(); break;
       case 'r': resetConfig(); if (!plotterMode) Serial.println(F("Config reset & fault cleared.")); loadConfig(); break;
       case 't': plotterMode = !plotterMode; csvHeaderPrinted=false; lastHeaderMs=0; if (!plotterMode){ Serial.println(F("Plotter mode OFF (verbose text enabled).")); printConfig(); printHelp(); } break;
       case 'h': if (plotterMode) printCsvHeader(); break;
       case 'I': setIdentityLUT(lutU); if (!plotterMode) Serial.println(F("Identity LUT loaded (not saved).")); break;
-      default:
-        if (!plotterMode){ Serial.print(F("Unknown cmd: ")); Serial.println(c); printHelp(); }
-        break;
+      default:  if (!plotterMode){ Serial.print(F("Unknown cmd: ")); Serial.println(c); printHelp(); } break;
     }
   }
 }
