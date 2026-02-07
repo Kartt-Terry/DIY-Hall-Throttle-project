@@ -3,6 +3,8 @@
 #include "sensors.h"
 #include "storage.h"
 #include <Arduino.h>
+#include <math.h>   // powf, log10f
+
 
 static int g_minRaw = 200;     // defaults (placeholder)
 static int g_maxRaw = 900;
