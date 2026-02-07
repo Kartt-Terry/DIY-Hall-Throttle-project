@@ -22,18 +22,18 @@ void StateMachine::check_faults() {
 
 void StateMachine::check_boot_gesture() {
   if (millis() - m_bootStart > BOOT_GESTURE_WINDOW_MS) return;
-  int raw = sensors_get_raw();
-  bool pressed = raw >= PRESS_THRESHOLD;
+
+  int  raw     = sensors_get_raw();
+  bool pressed = (raw >= PRESS_THRESHOLD);
+
   if (pressed && !m_wasPressed) {
     m_pressCount++;
   }
   m_wasPressed = pressed;
+
   if (m_pressCount >= REQUIRED_PRESSES) {
     m_mode = MODE_SETTINGS; // enter settings for calibration
-    processing_capture_min();
-    delay(150);
-    processing_capture_max();
-    // Note: UI-based guided calibration is preferred; this gesture can simply switch mode
+    // Täällä voidaan halutessa vain vaihtaa tilaa; varsinainen UI-kalibrointi on tarkempi
   }
 }
 
@@ -43,5 +43,8 @@ void StateMachine::update() {
 }
 
 void set_mode(Mode m) {
-  if (g_self) g_self->init(), g_self->m_mode = m; // re-init boot timer when switching
+  if (g_self) {
+    // Voit halutessa tehdä muuta tilaan siirtymisen yhteydessä
+    g_self->setMode(m);
+  }
 }

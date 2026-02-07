@@ -1,7 +1,8 @@
 #pragma once
+#include <Arduino.h>
 
-void processing_init();
-void processing_step();
+void  processing_init();
+void  processing_step();
 float processing_get_output();
 
 // Calibration control
